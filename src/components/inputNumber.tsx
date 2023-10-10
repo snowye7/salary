@@ -10,5 +10,5 @@ export interface NumberInputProps {
 
 export default function NumberInput(props: NumberInputProps) {
     const { AntInput, value, onChange, unit, controls } = props
-    return <InputNumber {...AntInput} min={0} addonAfter={unit} value={value} onChange={onChange} controls={!!controls}></InputNumber>
+    return <InputNumber className="h-[32px]" {...AntInput} min={0} addonAfter={unit} value={value} onChange={onChange} controls={!!controls}></InputNumber>
 }

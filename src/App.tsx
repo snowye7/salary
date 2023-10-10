@@ -1,8 +1,7 @@
 import { Button, DatePicker, Switch, Table, message } from "antd"
 import { ColumnType } from "antd/es/table"
 import dayjs from "dayjs"
-import { equal } from "gskj-tools"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import "./App.css"
 import NumberInput from "./components/inputNumber"
 import { baseUrl } from "./constant"
@@ -74,6 +73,8 @@ interface PersonInfo extends SetPersonConfig {
     attendancePay: number
     /**打卡绩效 */
     performancePay: number
+    /** 上个月工资 */
+    preRealSalary: number
 }
 
 interface SetPersonConfig {
@@ -161,7 +162,14 @@ function App() {
                 title: it.title,
                 render: (...rest) => {
                     const [props, , index] = rest
-                    return <NumberInput unit={it.key === "mealAllowance" ? "元/天" : "元"} value={props as number} onChange={e => changeTableDataValue(index, it.key, e ?? 0)} />
+                    return canChange ? (
+                        <NumberInput unit={it.key === "mealAllowance" ? "元/天" : "元"} value={props as number} onChange={e => changeTableDataValue(index, it.key, e ?? 0)} />
+                    ) : (
+                        <div style={{ height: 32, lineHeight: "32px" }}>
+                            {props ?? 0}
+                            {it.key === "mealAllowance" ? "元/天" : "元"}
+                        </div>
+                    )
                 }
             } as ColumnType<PersonInfo>
         }),
@@ -369,6 +377,14 @@ function App() {
             render: c => <div style={{ fontWeight: 700 }}>{c ? `${c}元` : "暂未运算"}</div>
         },
         {
+            dataIndex: "preRealSalary",
+            width: 140,
+            align: "center",
+            fixed: "right",
+            title: "上月实发工资",
+            render: c => <div style={{ fontWeight: 700 }}>{c ? `${c}元` : "暂未运算"}</div>
+        },
+        {
             dataIndex: "realSalary",
             width: 140,
             align: "center",
@@ -389,10 +405,6 @@ function App() {
     const [loading, setLoading] = useState(true)
 
     async function submit() {
-        if (equal(tableData, stateRef.current)) {
-            message.warning("数据未变化，请勿提交")
-            return
-        }
         setLoading(true)
         const result = await fetch(`${baseUrl}/attendanceInfo/calculate`, {
             method: "POST",
@@ -425,8 +437,6 @@ function App() {
         a.remove()
     }
 
-    const stateRef = useRef<PersonInfo[]>([])
-
     async function getPersonInfo() {
         if (!lastMonth) {
             message.warning("未选日期")
@@ -442,7 +452,6 @@ function App() {
         }
         const resultData = await result.json()
         setTableData((resultData.data ?? []) as PersonInfo[])
-        stateRef.current = resultData.data ?? []
     }
 
     useEffect(() => {
@@ -451,8 +460,12 @@ function App() {
 
     const [batch, setBatch] = useState(false)
 
+    const [canChange, setCanChange] = useState(false)
+
     async function changePerson() {
+        message.loading("正在获取钉钉人员考勤数据...", 0)
         const result = await fetch(`${baseUrl}/attendanceInfo/pull`, { method: "GET" })
+        message.destroy()
         if (!result.ok) {
             message.warning("拉取上个月人员和考勤信息失败")
             return
@@ -470,6 +483,10 @@ function App() {
                     </div>
                     <div className="flex gap-8 footer items-center">
                         <DatePicker picker="month" value={lastMonth} onChange={setLastMonth} />
+                        <div className="flex items-center">
+                            <div>修改：</div>
+                            <Switch checked={canChange} onChange={setCanChange} />
+                        </div>
                         <div className="flex items-center">
                             <div>批量修改：</div>
                             <Switch checked={batch} onChange={setBatch} />
