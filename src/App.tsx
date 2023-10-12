@@ -75,6 +75,8 @@ interface PersonInfo extends SetPersonConfig {
     performancePay: number
     /** 上个月工资 */
     preRealSalary: number
+    /** 未提交日报天数 */
+    dailyUncommittedQty: number
 }
 
 interface SetPersonConfig {
@@ -306,6 +308,15 @@ function App() {
             title: "司龄补贴",
             render: props => {
                 return <div>{props}*100元</div>
+            }
+        },
+        {
+            dataIndex: "dailyUncommittedQty",
+            width: 140,
+            align: "center",
+            title: "未提交日报天数",
+            render: props => {
+                return <div>{props}*20元</div>
             }
         },
         {
