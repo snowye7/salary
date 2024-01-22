@@ -54,7 +54,7 @@ interface PersonInfo extends SetPersonConfig {
     /**应发工资 */
     shouldSalary: number | null
     /**实发工资 */
-    realSalary: number | null
+    alary: number | null
     /**事假扣款 */
     leaveDeduct: number
     /**病假扣款 */
@@ -385,7 +385,7 @@ function App() {
             align: "center",
             fixed: "right",
             title: "应发工资",
-            render: c => <div style={{ fontWeight: 700 }}>{c ? `${c}元` : "暂未运算"}</div>
+            render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
         },
         {
             dataIndex: "preRealSalary",
@@ -393,7 +393,7 @@ function App() {
             align: "center",
             fixed: "right",
             title: "上月实发工资",
-            render: c => <div style={{ fontWeight: 700 }}>{c ? `${c}元` : "暂未运算"}</div>
+            render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
         },
         {
             dataIndex: "realSalary",
@@ -401,7 +401,7 @@ function App() {
             align: "center",
             fixed: "right",
             title: "实发工资",
-            render: c => <div style={{ fontWeight: 700 }}>{c ? `${c}元` : "暂未运算"}</div>
+            render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
         }
     ]
 
