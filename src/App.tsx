@@ -1,102 +1,14 @@
-import { Button, DatePicker, Switch, Table, message } from "antd"
+import { Button, Card, DatePicker, Divider, Input, Modal, Popconfirm, Radio, Segmented, Select, Switch, Table, message } from "antd"
 import { ColumnType } from "antd/es/table"
-import dayjs from "dayjs"
-import { Fragment, useEffect, useState } from "react"
+import dayjs, { Dayjs } from "dayjs"
+import { Fragment, useEffect, useRef, useState } from "react"
 import "./App.css"
 import NumberInput from "./components/inputNumber"
 import { baseUrl } from "./constant"
-
-interface PersonInfo extends SetPersonConfig {
-    /**用户名 */
-    userName: string
-    /**部门名称 */
-    deptName: string
-    /**司龄 */
-    serviceYear: number
-    /**用户id */
-    userId: string
-    /**事假天数 */
-    leaveDays: number
-    /**病假天数 */
-    sickDays: number
-    /**旷工天数 */
-    absenteeismDays: number
-    /** 迟到次数*/
-    lateTimes: number
-    /**早退次数 */
-    leaveEarlyTimes: number
-    /**早退时长 min */
-    leaveEarlyMinute: number
-    /**申请补卡次数 */
-    makingUpLackTimes: number
-    /**上班缺卡次数 */
-    onWorkLackCardTimes: number
-    /**下班缺卡次数 */
-    offWorkLackCardTimes: number
-    /**严重迟到时长 */
-    seriousLateMinute: number
-    /**严重迟到次数 */
-    seriousLateTimes: number
-    /**迟到时长 */
-    lateMinute: number
-    /**全勤标志：1：全勤；0：非全勤 */
-    attendanceFlag: number
-    /**应出勤天数 */
-    shouldAttendanceDays: number
-    /**实际出勤天数 */
-    attendanceDays: number
-    /**打卡绩效：1：有绩效；0：无绩效 */
-    performanceFlag: number
-    /**个人所得税 */
-    individualIncomeTax: number
-    /**统计月份：例如 2023-08 */
-    reportMonth: string
-    /**应发工资 */
-    shouldSalary: number | null
-    /**实发工资 */
-    alary: number | null
-    /**事假扣款 */
-    leaveDeduct: number
-    /**病假扣款 */
-    sickDeduct: number
-    /**旷工扣款 */
-    absenteeismDeduct: number
-    /**迟到扣款 */
-    lateDeduct: number
-    /**早退扣款 */
-    leaveEarlyDeduct: number
-    /**严重迟到扣款 */
-    seriousLateDeduct: number
-    /**打卡扣款 */
-    makingUpLackDeduct: number
-    /**全勤绩效 */
-    attendancePay: number
-    /**打卡绩效 */
-    performancePay: number
-    /** 上个月工资 */
-    preRealSalary: number
-    /** 未提交日报天数 */
-    dailyUncommittedQty: number
-}
-
-interface SetPersonConfig {
-    /**基本工资 */
-    basePay: number
-    /**通讯补贴 */
-    phoneAllowance: number
-    /**岗位补贴 */
-    jobAllowance: number
-    /**餐补 */
-    mealAllowance: number
-    /**补贴1 */
-    allowance1: number
-    /**补贴2 */
-    allowance2: number
-    /**补贴3 */
-    allowance3: number
-    /**社保费用（个人部分） */
-    socialSecurityCharges: number
-}
+import { CheckOutlined, CloseOutlined, DeleteColumnOutlined, PlusCircleFilled } from "@ant-design/icons"
+import Tip from "./components/Tip"
+import { BonusConfig, DeductConfig, Mode, PeopleConfig, PersonInfo, SetPersonConfig, UserAdditionalDeductRichInfo } from "./type"
+import { useRequest } from "ahooks"
 
 const canSetPersonInfoList: { title: string; key: keyof SetPersonConfig }[] = [
     { title: "基本工资", key: "basePay" },
@@ -106,10 +18,40 @@ const canSetPersonInfoList: { title: string; key: keyof SetPersonConfig }[] = [
     { title: "业绩提成", key: "allowance1" },
     { title: "绩效奖金", key: "allowance2" },
     { title: "额外奖金", key: "allowance3" },
-    { title: "社保个人费用", key: "socialSecurityCharges" }
+    { title: "社保个人费用", key: "socialSecurityCharges" },
+    { title: "社保公司部分扣款", key: "siCompanyDeduct" }
 ]
 
+const ModeObj: Record<string, Mode> = {
+    薪资管理: "salary",
+    奖金管理: "bonus"
+}
+
+async function getDeductOptions() {
+    const result = await fetch(`${baseUrl}/additionalDeduct/getAllList`, { method: "POST" })
+    if (!result.ok) {
+        return []
+    }
+    const list = await result.json()
+    return list.data as DeductConfig[]
+}
+
+async function getPeopleOptions() {
+    const result = await fetch(`${baseUrl}/userInfo/getList`, { method: "POST" })
+    if (!result.ok) {
+        return []
+    }
+    const list = await result.json()
+    return list.data as PeopleConfig[]
+}
+
 function App() {
+    const { data: DeductOptions } = useRequest(getDeductOptions)
+
+    const { data: PeopleOptions } = useRequest(getPeopleOptions)
+
+    const [mode, setMode] = useState<Mode>("salary")
+
     const [tableData, setTableData] = useState<PersonInfo[]>([])
 
     const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight })
@@ -126,9 +68,7 @@ function App() {
 
     const [lastMonth, setLastMonth] = useState<dayjs.Dayjs | null>(dayjs().subtract(1, "month"))
 
-    // function shouldgetSalary(props:PersonInfo){
-    //     const {basePay,jobAllowance,phoneAllowance,mealAllowance,leaveDays} = props
-    // }
+    const [currentPeople, setCurrentPeople] = useState<PersonInfo | null>(null)
 
     const columns: ColumnType<PersonInfo>[] = [
         {
@@ -143,23 +83,91 @@ function App() {
         },
         {
             dataIndex: "userName",
-            width: 80,
+            width: 110,
             fixed: "left",
             align: "center",
             title: "姓名",
-            render: c => <div style={{ fontWeight: 700 }}>{c}</div>
+            render: (c, row) => (
+                <div style={{ fontWeight: 700, display: "flex", gap: "8px", justifyContent: "center", alignItems: "center" }}>
+                    <div style={{ flex: 1 }}>{c}</div>
+                    <img onClick={() => setCurrentPeople(structuredClone(row))} style={{ width: 20, height: 20, marginTop: 2, cursor: "pointer" }} src="/个人所得税.png" alt="" />
+                </div>
+            )
         },
         {
+            dataIndex: "bankCard",
+            align: "center",
+            width: 220,
+            title: "银行账号",
+            render: (...rest) => {
+                const [state, , index] = rest
+                return canChange ? (
+                    <Input style={{ width: 200 }} value={state} onChange={e => changeTableDataValue(index, "bankCard", e.target.value ?? 0)} />
+                ) : (
+                    <Tip>
+                        <div style={{ height: 32, lineHeight: "32px" }}>{state ?? "暂无"}</div>
+                    </Tip>
+                )
+            }
+        },
+        {
+            dataIndex: "bankName",
+            align: "center",
+            width: 220,
+            title: "银行名称",
+            render: (...rest) => {
+                const [state, , index] = rest
+                return canChange ? (
+                    <Input style={{ width: 200 }} value={state} onChange={e => changeTableDataValue(index, "bankName", e.target.value ?? 0)} />
+                ) : (
+                    <Tip>
+                        <div style={{ height: 32, lineHeight: "32px" }}>{state ?? "暂无"}</div>
+                    </Tip>
+                )
+            }
+        },
+        {
+            dataIndex: "realSalary",
+            width: 140,
+            align: "center",
+            title: "实发工资",
+            render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
+        },
+        {
+            dataIndex: "preRealSalary",
+            width: 140,
+            align: "center",
+            title: "上月实发工资",
+            render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
+        },
+
+        {
             dataIndex: "deptName",
-            fixed: "left",
             align: "center",
             width: 120,
             title: "部门"
         },
+        {
+            dataIndex: "logDeductFlag",
+            width: 160,
+            align: "center",
+            title: "日志是否扣款",
+            render: (...rest) => {
+                const [state, , index] = rest
+                return canChange ? (
+                    <Radio.Group onChange={e => changeTableDataValue(index, "logDeductFlag", e.target.value)} value={state}>
+                        <Radio value={1}>是</Radio>
+                        <Radio value={0}>否</Radio>
+                    </Radio.Group>
+                ) : (
+                    <div>{state === 1 ? <CheckOutlined /> : <CloseOutlined />}</div>
+                )
+            }
+        },
         ...canSetPersonInfoList.map(it => {
             return {
                 dataIndex: it.key,
-                width: 160,
+                width: 140,
                 align: "center",
                 title: it.title,
                 render: (...rest) => {
@@ -176,75 +184,95 @@ function App() {
             } as ColumnType<PersonInfo>
         }),
         {
-            dataIndex: "leaveDays",
+            // dataIndex: "leaveDays",
             width: 140,
             align: "center",
-            title: "事假天数",
-            render: c => <div>{c}天</div>
+            title: "事假",
+            render: (_, $) => (
+                <div>
+                    {$.leaveDays}天/{$.leaveDeduct}元
+                </div>
+            )
         },
-        {
-            dataIndex: "leaveDeduct",
-            width: 140,
-            align: "center",
-            title: "事假扣款",
-            render: c => <div>{c}元</div>
-        },
+        // {
+        //     // dataIndex: "leaveDeduct",
+        //     width: 140,
+        //     align: "center",
+        //     title: "事假扣款",
+        //     render: c => <div>{c}元</div>
+        // },
         {
             dataIndex: "sickDays",
             width: 140,
             align: "center",
-            title: "病假天数",
-            render: c => <div>{c}天</div>
+            title: "病假",
+            render: (_, $) => (
+                <div>
+                    {$.sickDays}天/{$.sickDeduct}元
+                </div>
+            )
         },
-        {
-            dataIndex: "sickDeduct",
-            width: 140,
-            align: "center",
-            title: "病假扣款",
-            render: c => <div>{c}元</div>
-        },
+        // {
+        //     dataIndex: "sickDeduct",
+        //     width: 140,
+        //     align: "center",
+        //     title: "病假扣款",
+        //     render: c => <div>{c}元</div>
+        // },
         {
             dataIndex: "absenteeismDays",
             width: 140,
             align: "center",
-            title: "旷工天数",
-            render: c => <div>{c}天</div>
+            title: "旷工",
+            render: (_, $) => (
+                <div>
+                    {$.absenteeismDays}天/{$.absenteeismDeduct}元
+                </div>
+            )
         },
-        {
-            dataIndex: "absenteeismDeduct",
-            width: 140,
-            align: "center",
-            title: "旷工扣款",
-            render: c => <div>{c}元</div>
-        },
+        // {
+        //     dataIndex: "absenteeismDeduct",
+        //     width: 140,
+        //     align: "center",
+        //     title: "旷工扣款",
+        //     render: c => <div>{c}元</div>
+        // },
         {
             dataIndex: "lateTimes",
             width: 140,
             align: "center",
-            title: "迟到次数",
-            render: c => <div>{c}次</div>
+            title: "迟到",
+            render: (_, $) => (
+                <div>
+                    {$.lateTimes}次/{$.lateDeduct}元
+                </div>
+            )
         },
-        {
-            dataIndex: "lateDeduct",
-            width: 140,
-            align: "center",
-            title: "迟到扣款",
-            render: c => <div>{c}元</div>
-        },
+        // {
+        //     dataIndex: "lateDeduct",
+        //     width: 140,
+        //     align: "center",
+        //     title: "迟到扣款",
+        //     render: c => <div>{c}元</div>
+        // },
         {
             dataIndex: "leaveEarlyTimes",
             width: 140,
             align: "center",
-            title: "早退次数",
-            render: c => <div>{c}次</div>
+            title: "早退",
+            render: (_, $) => (
+                <div>
+                    {$.leaveEarlyTimes}次/{$.leaveEarlyDeduct}元
+                </div>
+            )
         },
-        {
-            dataIndex: "leaveEarlyDeduct",
-            width: 140,
-            align: "center",
-            title: "早退扣款",
-            render: c => <div>{c}元</div>
-        },
+        // {
+        //     dataIndex: "leaveEarlyDeduct",
+        //     width: 140,
+        //     align: "center",
+        //     title: "早退扣款",
+        //     render: c => <div>{c}元</div>
+        // },
         // {
         //     dataIndex: "leaveEarlyMinute",
         //     width: 140,
@@ -256,19 +284,19 @@ function App() {
             dataIndex: "makingUpLackTimes",
             width: 140,
             align: "center",
-            title: "补卡次数",
+            title: "补卡",
             render: c => <div>{c}次</div>
         },
         {
             dataIndex: "onWorkLackCardTimes",
-            width: 160,
+            width: 120,
             align: "center",
             title: "上班缺卡次数",
             render: c => <div>{c}次</div>
         },
         {
             dataIndex: "offWorkLackCardTimes",
-            width: 160,
+            width: 120,
             align: "center",
             title: "下班缺卡次数",
             render: c => <div>{c}次</div>
@@ -282,14 +310,14 @@ function App() {
         // },
         {
             dataIndex: "seriousLateTimes",
-            width: 160,
+            width: 120,
             align: "center",
             title: "严重迟到次数",
             render: c => <div>{c}次</div>
         },
         {
             dataIndex: "seriousLateDeduct",
-            width: 160,
+            width: 120,
             align: "center",
             title: "严重迟到扣款",
             render: c => <div>{c}元</div>
@@ -380,27 +408,18 @@ function App() {
             render: c => <div>{c}元</div>
         },
         {
+            dataIndex: "laborCost",
+            width: 120,
+            align: "center",
+            title: "用工成本",
+            render: c => <div>{c}元</div>
+        },
+        {
             dataIndex: "shouldSalary",
             width: 140,
             align: "center",
             fixed: "right",
             title: "应发工资",
-            render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
-        },
-        {
-            dataIndex: "preRealSalary",
-            width: 140,
-            align: "center",
-            fixed: "right",
-            title: "上月实发工资",
-            render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
-        },
-        {
-            dataIndex: "realSalary",
-            width: 140,
-            align: "center",
-            fixed: "right",
-            title: "实发工资",
             render: c => <div style={{ fontWeight: 700 }}>{typeof c === "number" ? `${c}元` : "暂未运算"}</div>
         }
     ]
@@ -433,19 +452,14 @@ function App() {
         getPersonInfo()
     }
 
+    const downloadRef = useRef<HTMLAnchorElement>(null)
+
     async function exportExcel() {
         if (!lastMonth) {
             message.warning("未选日期")
             return
         }
-        const result = await fetch(`${baseUrl}/attendanceInfo/export?reportMonth=${lastMonth.format("YYYY-MM")}`, { method: "GET" })
-        const resultBlob = await result.blob()
-        const a = document.createElement("a")
-        a.style.display = "none"
-        a.download = `${lastMonth.format("YYYY-MM")}数科技员工工资考勤表.xlsx`
-        a.href = URL.createObjectURL(resultBlob)
-        a.click()
-        a.remove()
+        downloadRef.current?.click()
     }
 
     async function getPersonInfo() {
@@ -484,37 +498,287 @@ function App() {
         getPersonInfo()
     }
 
+    const modalColumns: ColumnType<UserAdditionalDeductRichInfo>[] = [
+        {
+            width: 80,
+            align: "center",
+            title: "序号",
+            render: (_, __, index) => index + 1
+        },
+        {
+            dataIndex: "deductId",
+            width: 260,
+            align: "center",
+            title: "专项附加扣除名称",
+            render: (_, $, index) => {
+                return (
+                    <Select
+                        style={{ width: 260 }}
+                        value={_}
+                        options={DeductOptions?.map(it => ({ label: it.deductName, value: it.id })) ?? []}
+                        onChange={e => {
+                            const data = [...(currentPeople!.userAdditionalDeductRichInfoList ?? [])]
+                            data[index].deductId = e
+                            data[index].deductName = DeductOptions?.find(it => it.id === e)!.deductName!
+                            setCurrentPeople({ ...currentPeople!, userAdditionalDeductRichInfoList: data })
+                        }}
+                    ></Select>
+                )
+            }
+        },
+        {
+            dataIndex: "deductAmount",
+            width: 140,
+            align: "center",
+            title: "专项附加扣除金额",
+            render: (_, $, index) => {
+                return (
+                    <NumberInput
+                        value={_}
+                        onChange={e => {
+                            const data = [...(currentPeople!.userAdditionalDeductRichInfoList ?? [])]
+                            data[index].deductAmount = e as number
+                            setCurrentPeople({ ...currentPeople!, userAdditionalDeductRichInfoList: data })
+                        }}
+                        unit={"元"}
+                    ></NumberInput>
+                )
+            }
+        },
+        {
+            width: 120,
+            align: "center",
+            title: "开始时间",
+            render: (_, $, index) => {
+                const value = dayjs(`${$.startYear}-${$.startMonth}`)
+                const onChange = (e: Dayjs | null) => {
+                    const data = [...(currentPeople!.userAdditionalDeductRichInfoList ?? [])]
+                    data[index].startYear = e!.year()
+                    data[index].startMonth = e!.month() + 1
+                    setCurrentPeople({ ...currentPeople!, userAdditionalDeductRichInfoList: data })
+                }
+                return <DatePicker picker="month" value={value} onChange={onChange} />
+            }
+        },
+        {
+            width: 120,
+            align: "center",
+            title: "结束时间",
+            render: (_, $, index) => {
+                const value = dayjs(`${$.endYear}-${$.endMonth}`)
+                const onChange = (e: Dayjs | null) => {
+                    const data = [...(currentPeople!.userAdditionalDeductRichInfoList ?? [])]
+                    data[index].endYear = e!.year()
+                    data[index].endMonth = e!.month() + 1
+                    setCurrentPeople({ ...currentPeople!, userAdditionalDeductRichInfoList: data })
+                }
+                return <DatePicker picker="month" value={value} onChange={onChange} />
+            }
+        },
+        {
+            dataIndex: "remark",
+            width: 200,
+            align: "center",
+            title: "备注",
+            render: (_, $, index) => {
+                return (
+                    <Input
+                        value={_}
+                        onChange={e => {
+                            const data = [...(currentPeople!.userAdditionalDeductRichInfoList ?? [])]
+                            data[index].remark = e.target.value
+                            setCurrentPeople({ ...currentPeople!, userAdditionalDeductRichInfoList: data })
+                        }}
+                        placeholder="请输入备注"
+                    ></Input>
+                )
+            }
+        },
+        {
+            width: 120,
+            align: "center",
+            title: "操作",
+            render: (_, $, index) => {
+                return (
+                    <Popconfirm
+                        title="确认删除吗？"
+                        onConfirm={() => {
+                            const data = [...(currentPeople!.userAdditionalDeductRichInfoList ?? [])]
+                            data.splice(index, 1)
+                            setCurrentPeople({ ...currentPeople!, userAdditionalDeductRichInfoList: data })
+                        }}
+                        okText="是"
+                        cancelText="否"
+                    >
+                        <Button danger>删除</Button>
+                    </Popconfirm>
+                )
+            }
+        }
+    ]
+
+    const [bonusData, setBonusData] = useState<BonusConfig[]>([])
+
+    async function getBonus() {
+        const result = await fetch(`${baseUrl}/bonus/getList`, {
+            method: "POST",
+            body: JSON.stringify({ userId: bonusPeople ?? void 0 }),
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+        if (!result.ok) {
+            message.warning("获取奖金数据失败")
+            return
+        }
+        const resultData = await result.json()
+        setBonusData((resultData.data ?? []) as BonusConfig[])
+    }
+
+    const [bonusPeople, setBonusPeople] = useState<string | null>(null)
+
+    useEffect(() => {
+        getBonus()
+    }, [bonusPeople])
+
+    const bonusColumns: ColumnType<BonusConfig>[] = [
+        {
+            title: "序号",
+            width: 60,
+            align: "center",
+            render: (_, __, index) => index + 1
+        },
+        {
+            dataIndex: "userName",
+            width: 110,
+            align: "center",
+            title: "姓名"
+        },
+        {
+            dataIndex: "amount",
+            width: 140,
+            align: "center",
+            title: "金额",
+            render: c => <div>{c}元</div>
+        },
+        {
+            dataIndex: "taxAmount",
+            width: 140,
+            align: "center",
+            title: "税额",
+            render: c => <div>{c}元</div>
+        },
+        {
+            dataIndex: "remark",
+            width: 140,
+            align: "center",
+            title: "备注",
+            render: c => <div>{c}</div>
+        }
+    ]
+
     return (
         <Fragment>
             <main className="px-4" style={{ width: "100vw", height: "100vh" }}>
-                <div className="flex h-14 justify-between items-center">
+                <div className="flex h-14 items-center">
                     <div className="flex gap-1 items-center">
                         <img src="/logo.png" alt="" width={40} />
                         <div style={{ lineHeight: "40px", fontSize: 20 }}>江苏格数科技智能薪酬管理平台</div>
                     </div>
-                    <div className="flex gap-8 footer items-center">
-                        <DatePicker picker="month" value={lastMonth} onChange={setLastMonth} />
-                        <div className="flex items-center">
-                            <div>修改：</div>
-                            <Switch checked={canChange} onChange={setCanChange} />
-                        </div>
-                        <div className="flex items-center">
-                            <div>批量修改：</div>
-                            <Switch checked={batch} onChange={setBatch} />
-                        </div>
-                        <Button className="bg-white" onClick={changePerson}>
-                            拉取上个月人员和考勤信息
-                        </Button>
-                        <Button className="bg-white" onClick={exportExcel}>
-                            导出员工薪资数据
-                        </Button>
-                        <Button type="primary" onClick={submit}>
-                            修改并更新
-                        </Button>
+
+                    <div className=" pl-8">
+                        <Segmented
+                            value={ModeObj[mode]}
+                            options={Object.keys(ModeObj)}
+                            onChange={value => {
+                                setMode(ModeObj[value])
+                            }}
+                        />
+                    </div>
+
+                    <div className="flex flex-1 gap-8 footer items-center justify-end">
+                        {mode === "salary" ? (
+                            <>
+                                <DatePicker picker="month" value={lastMonth} onChange={setLastMonth} />
+                                <div className="flex items-center">
+                                    <div>修改：</div>
+                                    <Switch checked={canChange} onChange={setCanChange} />
+                                </div>
+                                <div className="flex items-center">
+                                    <div>批量修改：</div>
+                                    <Switch checked={batch} onChange={setBatch} />
+                                </div>
+                                <Button className="bg-white" onClick={changePerson}>
+                                    拉取上个月人员和考勤信息
+                                </Button>
+                                <a ref={downloadRef} href={`${baseUrl}/attendanceInfo/export?reportMonth=${lastMonth?.format("YYYY-MM")}`} style={{ display: "none" }} download={`${lastMonth?.format("YYYY-MM")}格数科技考勤表.xlsx`}></a>
+                                <Button className="bg-white" onClick={exportExcel}>
+                                    导出员工薪资数据
+                                </Button>
+                                <Button type="primary" onClick={submit}>
+                                    修改并更新
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Select className="w-[200px]" allowClear value={bonusPeople} onChange={setBonusPeople} options={PeopleOptions?.map(it => ({ label: it.userName, value: it.id }))}></Select>
+                            </>
+                        )}
                     </div>
                 </div>
-                <Table loading={loading} columns={columns} dataSource={tableData} scroll={{ x: Math.floor(windowSize.width) - 16, y: Math.floor(windowSize.height) - 60 - 56 - 20 }} rowKey="userId" pagination={false}></Table>
+                {mode === "salary" ? <Table loading={loading} columns={columns} dataSource={tableData} scroll={{ x: Math.floor(windowSize.width) - 16, y: Math.floor(windowSize.height) - 60 - 56 - 20 }} rowKey="userId" pagination={false}></Table> : <Table columns={bonusColumns} dataSource={bonusData} scroll={{ y: Math.floor(windowSize.height) - 60 - 56 - 20 }} rowKey="id" pagination={false}></Table>}
             </main>
+
+            {!!currentPeople && (
+                <Modal
+                    title={currentPeople.userName + "个人所得税专项附加扣除详情"}
+                    open={true}
+                    width={1200}
+                    onCancel={() => {
+                        setCurrentPeople(null)
+                    }}
+                    onOk={async () => {
+                        const result = await fetch(`${baseUrl}/userAdditionalDeduct/batchUpdate`, {
+                            method: "POST",
+                            body: JSON.stringify({
+                                userId: currentPeople.userId,
+                                userAdditionalDeductList: currentPeople.userAdditionalDeductRichInfoList?.map(it => {
+                                    return Object.assign({}, it, { id: undefined })
+                                })
+                            }),
+                            headers: {
+                                "Content-Type": "application/json"
+                            }
+                        })
+                        if (!result.ok) {
+                            message.warning("更新数据失败")
+                            return
+                        }
+                        message.success("更新数据成功")
+                        setCurrentPeople(null)
+                        getPersonInfo()
+                    }}
+                >
+                    <div className="py-2 flex justify-end">
+                        <Button
+                            type="primary"
+                            icon={<PlusCircleFilled></PlusCircleFilled>}
+                            onClick={() =>
+                                setCurrentPeople(state => {
+                                    const data = [...(state?.userAdditionalDeductRichInfoList ?? [])]
+                                    const [endYear, endMonth] = dayjs().format("YYYY-MM").split("-").map(Number)
+                                    const [startYear, startMonth] = dayjs().subtract(1, "month").format("YYYY-MM").split("-").map(Number)
+                                    data.push({ id: Date.now(), userId: state?.userId!, deductId: DeductOptions?.[0].id ?? null, deductName: DeductOptions?.[0].deductName ?? "", deductAmount: 1000, endMonth, endYear, remark: "", startMonth, startYear })
+                                    return { ...state!, userAdditionalDeductRichInfoList: data }
+                                })
+                            }
+                        >
+                            新增专项附加扣除
+                        </Button>
+                    </div>
+                    <Table rowKey={"id"} columns={modalColumns} dataSource={currentPeople.userAdditionalDeductRichInfoList ?? []} pagination={false}></Table>
+                </Modal>
+            )}
         </Fragment>
     )
 }

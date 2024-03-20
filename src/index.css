@@ -12,5 +12,13 @@ body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-color: #cccccc60;
+    background-color: #e5e7eb;
+}
+
+.one-line {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    word-break: break-all;
 }
