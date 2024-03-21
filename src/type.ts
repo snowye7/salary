@@ -146,7 +146,7 @@ export type PeopleConfig = {
 }
 
 export type BonusConfig = {
-    id: number
+    id?: number
     userName: string
     /** 金额 */
     amount: number
