@@ -8,6 +8,7 @@ import Table, { ColumnType } from "antd/es/table"
 import { useWindowSize } from "../App"
 import { FormInstance, useForm } from "antd/es/form/Form"
 import NumberInput from "./inputNumber"
+import dayjs from "dayjs"
 
 async function getPeopleOptions() {
     const result = await fetch(`${baseUrl}/userInfo/getList`, { method: "POST" })
@@ -15,7 +16,26 @@ async function getPeopleOptions() {
         return []
     }
     const list = await result.json()
+    if (!list.success) {
+        message.warning(list.message)
+        return []
+    }
     return list.data as PeopleConfig[]
+}
+
+function parseDate(dateString: string) {
+    const date = new Date(
+        Date.UTC(
+            parseInt(dateString.substring(0, 4)), // 年份
+            parseInt(dateString.substring(5, 7)) - 1, // 月份（注意 JavaScript 的月份从 0 开始）
+            parseInt(dateString.substring(8, 10)), // 日
+            parseInt(dateString.substring(11, 13)), // 小时
+            parseInt(dateString.substring(14, 16)), // 分钟
+            parseInt(dateString.substring(17, 19)), // 秒
+            parseInt(dateString.substring(20, 23)) // 毫秒
+        )
+    )
+    return date
 }
 
 export default function Bonus() {
@@ -36,6 +56,10 @@ export default function Bonus() {
             return []
         }
         const resultData = await result.json()
+        if (!resultData.success) {
+            message.warning(resultData.message)
+            return []
+        }
         return (resultData.data ?? []) as BonusConfig[]
     }
 
@@ -78,6 +102,18 @@ export default function Bonus() {
             render: c => <div>{c}</div>
         },
         {
+            width: 140,
+            align: "center",
+            title: "创建时间",
+            render: (_, $) => <div>{dayjs($.createTime).format("YYYY-MM-DD HH:mm:ss")}</div>
+        },
+        {
+            width: 140,
+            align: "center",
+            title: "更新时间",
+            render: (_, $) => <div>{dayjs($.updateTime).format("YYYY-MM-DD HH:mm:ss")}</div>
+        },
+        {
             width: 100,
             align: "center",
             title: "操作",
@@ -104,6 +140,11 @@ export default function Bonus() {
                                 const result = await fetch(`${baseUrl}/bonus/delete/${$.id}`)
                                 if (!result.ok) {
                                     message.warning("删除失败")
+                                    return
+                                }
+                                const data = await result.json()
+                                if (!data.success) {
+                                    message.warning(data.message)
                                     return
                                 }
                                 message.success("删除成功")
@@ -142,6 +183,11 @@ export default function Bonus() {
                 message.warning("新增失败")
                 return
             }
+            const data = await result.json()
+            if (!data.success) {
+                message.warning(data.message)
+                return
+            }
             message.success("新增成功")
             run()
             setHandleType(null)
@@ -157,6 +203,11 @@ export default function Bonus() {
         })
         if (!result.ok) {
             message.warning("修改失败")
+            return
+        }
+        const data = await result.json()
+        if (!data.success) {
+            message.warning(data.message)
             return
         }
         message.success("修改成功")

@@ -19,7 +19,7 @@ const canSetPersonInfoList: { title: string; key: keyof SetPersonConfig }[] = [
     { title: "业绩提成", key: "allowance1" },
     { title: "绩效奖金", key: "allowance2" },
     { title: "额外奖金", key: "allowance3" },
-    { title: "社保个人费用", key: "socialSecurityCharges" },
+    { title: "社保个人费用", key: "siPersonDeduct" },
     { title: "社保公司扣款", key: "siCompanyDeduct" }
 ]
 
@@ -28,8 +28,12 @@ async function getDeductOptions() {
     if (!result.ok) {
         return []
     }
-    const list = await result.json()
-    return list.data as DeductConfig[]
+    const data = await result.json()
+    if (!data.success) {
+        message.warning(data.message)
+        return
+    }
+    return data.data as DeductConfig[]
 }
 
 export default function Salary() {
@@ -423,6 +427,12 @@ export default function Salary() {
             setLoading(false)
             return
         }
+        const data = await result.json()
+        if (!data.success) {
+            message.warning(data.message)
+            setLoading(false)
+            return
+        }
         message.success("更新数据成功")
         getPersonInfo()
     }
@@ -451,6 +461,11 @@ export default function Salary() {
             return
         }
         const resultData = await result.json()
+        if (!resultData.success) {
+            message.warning(resultData.message)
+            setTableData([])
+            return
+        }
         setTableData((resultData.data ?? []) as PersonInfo[])
     }
 
@@ -464,6 +479,11 @@ export default function Salary() {
         message.destroy()
         if (!result.ok) {
             message.warning("拉取上个月人员和考勤信息失败")
+            return
+        }
+        const data = await result.json()
+        if (!data.success) {
+            message.warning(data.message)
             return
         }
         getPersonInfo()
@@ -621,6 +641,11 @@ export default function Salary() {
                         })
                         if (!result.ok) {
                             message.warning("更新数据失败")
+                            return
+                        }
+                        const data = await result.json()
+                        if (!data.success) {
+                            message.warning(data.message)
                             return
                         }
                         message.success("更新数据成功")

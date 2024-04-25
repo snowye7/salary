@@ -10,6 +10,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@ant-design/cssinjs": "^1.18.4",
         "@ant-design/icons": "^5.2.6",
         "ahooks": "^3.7.10",
         "antd": "^5.9.0",

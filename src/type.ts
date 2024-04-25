@@ -127,7 +127,7 @@ export type SetPersonConfig = {
     /**补贴3 */
     allowance3: number
     /**社保费用（个人部分） */
-    socialSecurityCharges: number
+    siPersonDeduct: number
     /** 银行名称 */
     bankName: string
     /** 银行卡号 */
@@ -154,4 +154,6 @@ export type BonusConfig = {
     /** 税额 */
     taxAmount: number | null
     remark: string
+    createTime: number
+    updateTime: number
 }
