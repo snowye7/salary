@@ -27,29 +27,27 @@ function App() {
     }, [])
 
     return (
-        <Fragment>
-            <main className="px-4" style={{ width: "100vw", height: "100vh" }}>
-                <div className="flex h-14 items-center">
-                    <div className="flex gap-1 items-center">
-                        <img src="/logo.png" alt="" width={40} />
-                        <div style={{ lineHeight: "40px", fontSize: 20 }}>江苏格数科技智能薪酬管理平台</div>
-                    </div>
-
-                    <div className=" pl-8">
-                        <Segmented
-                            value={ModeObj[mode]}
-                            options={Object.keys(ModeObj)}
-                            onChange={value => {
-                                setMode(ModeObj[value])
-                            }}
-                        />
-                    </div>
-
-                    <div id="filter" className="flex flex-1 gap-8 footer items-center justify-end"></div>
+        <main className="px-4 w-screen h-screen">
+            <div className="flex h-14 items-center">
+                <div className="flex gap-1 items-center">
+                    <img src="/logo.png" alt="" width={40} />
+                    <div style={{ lineHeight: "40px", fontSize: 20 }}>江苏格数科技智能薪酬管理平台</div>
                 </div>
-                {mode === "salary" ? <Salary></Salary> : <Bonus></Bonus>}
-            </main>
-        </Fragment>
+
+                <div className=" pl-8">
+                    <Segmented
+                        value={ModeObj[mode]}
+                        options={Object.keys(ModeObj)}
+                        onChange={value => {
+                            setMode(ModeObj[value])
+                        }}
+                    />
+                </div>
+
+                <div id="filter" className="flex flex-1 gap-8 footer items-center justify-end"></div>
+            </div>
+            {mode === "salary" ? <Salary></Salary> : <Bonus></Bonus>}
+        </main>
     )
 }
 

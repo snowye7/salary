@@ -7,7 +7,7 @@ import Table, { ColumnType } from "antd/es/table"
 import { Button, DatePicker, Input, Modal, Popconfirm, Radio, Select, Switch, message } from "antd"
 import Tip from "./Tip"
 import { CheckOutlined, CloseOutlined, PlusCircleFilled } from "@ant-design/icons"
-import NumberInput from "./inputNumber"
+import NumberInput from "./InputNumber"
 import { useWindowSize } from "../App"
 import { createPortal } from "react-dom"
 

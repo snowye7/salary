@@ -1,14 +1,14 @@
 import { useRequest } from "ahooks"
-import { Fragment, useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
-import { BonusConfig, PeopleConfig } from "../type"
-import { baseUrl } from "../constant"
 import { Button, Form, Input, Modal, Popconfirm, Select, message } from "antd"
+import { useForm } from "antd/es/form/Form"
 import Table, { ColumnType } from "antd/es/table"
-import { useWindowSize } from "../App"
-import { FormInstance, useForm } from "antd/es/form/Form"
-import NumberInput from "./inputNumber"
 import dayjs from "dayjs"
+import { Fragment, useRef, useState } from "react"
+import { createPortal } from "react-dom"
+import { useWindowSize } from "../App"
+import { baseUrl } from "../constant"
+import { BonusConfig, PeopleConfig } from "../type"
+import NumberInput from "./InputNumber"
 
 async function getPeopleOptions() {
     const result = await fetch(`${baseUrl}/userInfo/getList`, { method: "POST" })
@@ -21,21 +21,6 @@ async function getPeopleOptions() {
         return []
     }
     return list.data as PeopleConfig[]
-}
-
-function parseDate(dateString: string) {
-    const date = new Date(
-        Date.UTC(
-            parseInt(dateString.substring(0, 4)), // 年份
-            parseInt(dateString.substring(5, 7)) - 1, // 月份（注意 JavaScript 的月份从 0 开始）
-            parseInt(dateString.substring(8, 10)), // 日
-            parseInt(dateString.substring(11, 13)), // 小时
-            parseInt(dateString.substring(14, 16)), // 分钟
-            parseInt(dateString.substring(17, 19)), // 秒
-            parseInt(dateString.substring(20, 23)) // 毫秒
-        )
-    )
-    return date
 }
 
 export default function Bonus() {
